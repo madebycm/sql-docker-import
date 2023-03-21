@@ -73,13 +73,14 @@ docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MY
 
 # Find the latest SQL file in the working directory
 latest_sql_file=$(ls -t *.sql 2>/dev/null | head -n1)
+last_modified_date=$(date -r "$latest_sql_file" +"%H:%M:%S (%d.%m.%Y)")
 if [ -z "$latest_sql_file" ]; then
     echo "No SQL files found in the current directory."
     exit 1
 fi
 
 while true; do
-    echo "Latest SQL file found: $latest_sql_file"
+    echo "Latest SQL file found: $latest_sql_file (Last modified: $last_modified_date)"
     echo "Do you want to use this file? (y/n, default is y)"
     read answer
 

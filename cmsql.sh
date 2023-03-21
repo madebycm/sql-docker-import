@@ -43,8 +43,6 @@ if [ -z "$databases" ]; then
     exit 1
 fi
 
-
-
 echo "Databases available in the selected container:"
 echo "$databases"
 echo
@@ -104,7 +102,6 @@ while true; do
         echo "Invalid input. Please enter 'y' or 'n'."
     fi
 done
-
 
 echo "Importing $latest_sql_file to $selected_database"
 

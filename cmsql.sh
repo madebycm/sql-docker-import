@@ -73,7 +73,16 @@ docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MY
 
 # Find the latest SQL file in the working directory
 latest_sql_file=$(ls -t *.sql 2>/dev/null | head -n1)
-last_modified_date=$(date -r "$latest_sql_file" +"%H:%M:%S (%d.%m.%Y)")
+last_modified_date=$(date -r "$latest_sql_file" +"%d.%m.%Y")
+today=$(date +"%d.%m.%Y")
+
+if [ "$last_modified_date" = "$today" ]; then
+    last_modified_date=$(date -r "$latest_sql_file" +"%H:%M:%S (today)")
+else
+    last_modified_date=$(date -r "$latest_sql_file" +"%H:%M:%S (%d.%m.%Y)")
+fi
+
+
 if [ -z "$latest_sql_file" ]; then
     echo "No SQL files found in the current directory."
     exit 1
@@ -107,7 +116,7 @@ done
 echo "Importing $latest_sql_file to $selected_database"
 
 # Import the SQL file to the selected database
-docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MYSQL_USER" "$selected_database" < "$latest_sql_file"
+docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MYSQL_USER" "$selected_database" <"$latest_sql_file"
 
 # Verify import and show success message
 echo "Import successful! $latest_sql_file has been imported into $selected_database in the container $selected_container."

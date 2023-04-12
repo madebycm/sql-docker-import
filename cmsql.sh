@@ -1,7 +1,8 @@
 #!/bin/bash
 
-MYSQL_USER="root"
-MYSQL_PASSWORD="123"
+MYSQL_USERS=("root" "cm")
+MYSQL_PASSWORDS=("123" "blank")
+
 
 # Find appropriate docker container
 container_ids=$(docker ps --format '{{.Names}}' | grep -E 'mysql|db|mariadb')
@@ -15,6 +16,15 @@ fi
 echo "Containers:"
 echo "$container_ids"
 echo
+
+for i in "${!MYSQL_USERS[@]}"; do
+  MYSQL_USER="${MYSQL_USERS[$i]}"
+  MYSQL_PASSWORD="${MYSQL_PASSWORDS[$i]}"
+  # Existing code starts here
+  # ...
+  # Existing code ends here
+done
+
 
 selected_container=""
 while true; do
@@ -119,4 +129,4 @@ echo "Importing $latest_sql_file to $selected_database"
 docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MYSQL_USER" "$selected_database" <"$latest_sql_file"
 
 # Verify import and show success message
-echo "Import successful! $latest_sql_file has been imported into $selected_database in the container $selected_container."
+echo "Import successful! $latest_sql_file has been imported into $selected_database in the container $selected_container using user $MYSQL_USER."

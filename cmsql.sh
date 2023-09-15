@@ -17,7 +17,7 @@ MYSQL_USERS=("root")
 MYSQL_PASSWORDS=("123")
 
 # Type 'cmsql -r' to remote dump before importing
-# Highly recommend to set up at dedicated read only user for this
+# Highly recommend to set up a dedicated read only user for this
 
 # REQUIRES mysqldump
 # (macos: brew install mysql-client)

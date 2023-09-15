@@ -1,7 +1,55 @@
 #!/bin/bash
 
-MYSQL_USERS=("root" "cm")
-MYSQL_PASSWORDS=("123" "blank")
+
+
+# ---------------------------
+# BASIC USAGE FOR THIS SCRIPT
+# ---------------------------
+
+# This script is intended to be used with Docker containers running MySQL.
+# It will automatically find the latest .sql file in the current directory,
+# and import it to a database in found container. 
+
+# Create alias 'csmsql' to this shell script
+# 'cmsql' to import the latest .sql file in the current directory
+
+MYSQL_USERS=("root")
+MYSQL_PASSWORDS=("123")
+
+# Type 'cmsql -r' to remote dump before importing
+# Highly recommend to set up at dedicated read only user for this
+
+# REQUIRES mysqldump
+# (macos: brew install mysql-client)
+# (ubuntu: sudo apt-get install mysql-client)
+# (windows: https://dev.mysql.com/doc/refman/8.0/en/mysql-installer.html)
+
+REMOTE_SERVER=$cmsql_REMOTE_IP
+REMOTE_PASSWORD=$cmsql_REMOTE_PW
+REMOTE_USER=$cmsql_REMOTE_USER
+REMOTE_DATABASE=$cmsql_REMOTE_DB
+
+# Export these in .zprofile or .bash_profile
+
+# export cmsql_REMOTE_IP=1.2.3.4
+# export cmsql_REMOTE_PW=123
+# export cmsql_REMOTE_USER=myuser
+# export cmsql_REMOTE_DB=mydatabae
+
+if [[ $1 == "-r" ]]; then
+
+    echo "Dumping .sql file from remote server..."
+
+    if ! mysql -h $REMOTE_SERVER -u $REMOTE_USER -p$REMOTE_PASSWORD -e "SELECT 1" >/dev/null 2>&1; then
+        echo "Connection to remote server failed. Please check your credentials."
+        exit 1
+    fi
+    
+    mysqldump -h $REMOTE_SERVER -u $REMOTE_USER -p$REMOTE_PASSWORD $REMOTE_DATABASE > dump_.sql
+    date=$(date +"%Y%m%d")
+    mv dump_.sql dump_auto_$date.sql
+    echo "Dump completed."
+fi
 
 
 # Find appropriate docker container
@@ -18,11 +66,8 @@ echo "$container_ids"
 echo
 
 for i in "${!MYSQL_USERS[@]}"; do
-  MYSQL_USER="${MYSQL_USERS[$i]}"
-  MYSQL_PASSWORD="${MYSQL_PASSWORDS[$i]}"
-  # Existing code starts here
-  # ...
-  # Existing code ends here
+    MYSQL_USER="${MYSQL_USERS[$i]}"
+    MYSQL_PASSWORD="${MYSQL_PASSWORDS[$i]}"
 done
 
 
@@ -38,7 +83,7 @@ while true; do
             break
         done
     fi
-
+    
     if [ -n "$selected_container" ]; then
         break
     else
@@ -70,7 +115,7 @@ while true; do
             break
         done
     fi
-
+    
     if [ -n "$selected_database" ]; then
         break
     else
@@ -102,10 +147,10 @@ while true; do
     echo "Latest SQL file found: $latest_sql_file (Last modified: $last_modified_date)"
     echo "Do you want to use this file? (y/n, default is y)"
     read answer
-
+    
     if [ "$answer" = "y" ] || [ -z "$answer" ]; then
         break
-    elif [ "$answer" = "n" ]; then
+        elif [ "$answer" = "n" ]; then
         sql_files=$(ls -t *.sql)
         if [ "$(echo "$sql_files" | wc -l)" -eq 1 ]; then
             latest_sql_file=$(echo "$sql_files" | head -n 1)

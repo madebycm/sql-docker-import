@@ -1,7 +1,5 @@
 #!/bin/bash
 
-
-
 # ---------------------------
 # BASIC USAGE FOR THIS SCRIPT
 # ---------------------------
@@ -24,17 +22,17 @@ MYSQL_PASSWORDS=("123")
 # (ubuntu: sudo apt-get install mysql-client)
 # (windows: https://dev.mysql.com/doc/refman/8.0/en/mysql-installer.html)
 
-REMOTE_SERVER=$cmsql_REMOTE_IP
-REMOTE_PASSWORD=$cmsql_REMOTE_PW
-REMOTE_USER=$cmsql_REMOTE_USER
-REMOTE_DATABASE=$cmsql_REMOTE_DB
-
-# Export these in .zprofile or .bash_profile
+# Export these in .zprofile or .bash_profile to use -r
 
 # export cmsql_REMOTE_IP=1.2.3.4
 # export cmsql_REMOTE_PW=123
 # export cmsql_REMOTE_USER=myuser
 # export cmsql_REMOTE_DB=mydatabae
+
+REMOTE_SERVER=$cmsql_REMOTE_IP
+REMOTE_PASSWORD=$cmsql_REMOTE_PW
+REMOTE_USER=$cmsql_REMOTE_USER
+REMOTE_DATABASE=$cmsql_REMOTE_DB
 
 if [[ $1 == "-r" ]]; then
 

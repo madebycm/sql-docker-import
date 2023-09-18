@@ -34,7 +34,11 @@ REMOTE_PASSWORD=$cmsql_REMOTE_PW
 REMOTE_USER=$cmsql_REMOTE_USER
 REMOTE_DATABASE=$cmsql_REMOTE_DB
 
+skip_user_confirmation=0
+
 if [[ $1 == "-r" ]]; then
+
+    skip_user_confirmation=1
 
     echo "Dumping .sql file from remote server..."
 
@@ -159,12 +163,18 @@ fi
 
 while true; do
     echo "Latest SQL file found: $latest_sql_file (Last modified: $last_modified_date)"
-    echo "Do you want to use this file? (y/n, default is y)"
-    read answer
+
+    if [ "$skip_user_confirmation" -eq 1 ]; then  # Check if user confirmation should be skipped
+        echo "Dump complete, now importing..."
+        answer="y"
+    else
+        echo "Do you want to use this file? (y/n, default is y)"
+        read answer
+    fi
     
     if [ "$answer" = "y" ] || [ -z "$answer" ]; then
         break
-        elif [ "$answer" = "n" ]; then
+    elif [ "$answer" = "n" ]; then
         sql_files=$(ls -t *.sql)
         if [ "$(echo "$sql_files" | wc -l)" -eq 1 ]; then
             latest_sql_file=$(echo "$sql_files" | head -n 1)
@@ -181,6 +191,7 @@ while true; do
         echo "Invalid input. Please enter 'y' or 'n'."
     fi
 done
+
 
 echo "Importing $latest_sql_file to $selected_database"
 

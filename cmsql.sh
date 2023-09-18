@@ -49,6 +49,23 @@ if [[ $1 == "-r" ]]; then
     echo "Dump completed."
 fi
 
+if [[ $1 == "-clean" ]]; then
+    echo "Listing all .sql files found:"
+    ls -l *.sql
+    echo
+    echo "Please confirm the removal of all .sql files in the folder. (y/n)"
+    
+    read confirmation
+    
+    if [ "$confirmation" = "y" ]; then
+        echo "Removing all .sql files in folder..."
+        rm *.sql
+        echo "SQL files cleaned up."
+        exit 1
+    else
+        echo "Removal cancelled."
+    fi
+fi
 
 # Find appropriate docker container
 container_ids=$(docker ps --format '{{.Names}}' | grep -E 'mysql|db|mariadb')
@@ -134,7 +151,6 @@ if [ "$last_modified_date" = "$today" ]; then
 else
     last_modified_date=$(date -r "$latest_sql_file" +"%H:%M:%S (%d.%m.%Y)")
 fi
-
 
 if [ -z "$latest_sql_file" ]; then
     echo "No SQL files found in the current directory."

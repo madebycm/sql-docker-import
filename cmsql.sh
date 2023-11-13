@@ -42,6 +42,12 @@ if [[ $1 == "-r" ]]; then
 
     echo "Dumping .sql file from remote server..."
 
+    if ! command -v mysqldump &> /dev/null
+    then
+        echo "mysqldump could not be found. Please install mysqldump. (mysql-client@brew)"
+        exit 1
+    fi
+
     if ! mysql -h $REMOTE_SERVER -u $REMOTE_USER -p$REMOTE_PASSWORD -e "SELECT 1" >/dev/null 2>&1; then
         echo "Connection to remote server failed. Please check your credentials."
         exit 1

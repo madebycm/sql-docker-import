@@ -15,6 +15,7 @@ MYSQL_USERS=("root")
 MYSQL_PASSWORDS=("123")
 
 # Type 'cmsql -r' to remote dump before importing
+# Type 'cmsql -p <password>' to specify a custom password
 # Highly recommend to set up a dedicated read only user for this
 
 # REQUIRES mysqldump
@@ -35,11 +36,47 @@ REMOTE_USER=$cmsql_REMOTE_USER
 REMOTE_DATABASE=$cmsql_REMOTE_DB
 
 skip_user_confirmation=0
+custom_password=""
 
-if [[ $1 == "-r" ]]; then
+# Parse command line arguments
+while getopts "rp:clean" opt; do
+  case $opt in
+    r)
+      skip_user_confirmation=1
+      ;;
+    p)
+      custom_password="$OPTARG"
+      ;;
+    clean)
+      echo "Listing all .sql files found:"
+      ls -l *.sql
+      echo
+      echo "Please confirm the removal of all .sql files in the folder. (y/n)"
+      
+      read confirmation
+      
+      if [ "$confirmation" = "y" ]; then
+          echo "Removing all .sql files in folder..."
+          rm *.sql
+          echo "SQL files cleaned up."
+          exit 0
+      else
+          echo "Removal cancelled."
+          exit 0
+      fi
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+  esac
+done
 
-    skip_user_confirmation=1
+if [ -n "$custom_password" ]; then
+  MYSQL_PASSWORDS=("$custom_password")
+fi
 
+if [ $skip_user_confirmation -eq 1 ]; then
     echo "Dumping .sql file from remote server..."
 
     if ! command -v mysqldump &> /dev/null
@@ -59,24 +96,6 @@ if [[ $1 == "-r" ]]; then
     echo "Dump completed."
 fi
 
-if [[ $1 == "-clean" ]]; then
-    echo "Listing all .sql files found:"
-    ls -l *.sql
-    echo
-    echo "Please confirm the removal of all .sql files in the folder. (y/n)"
-    
-    read confirmation
-    
-    if [ "$confirmation" = "y" ]; then
-        echo "Removing all .sql files in folder..."
-        rm *.sql
-        echo "SQL files cleaned up."
-        exit 1
-    else
-        echo "Removal cancelled."
-    fi
-fi
-
 # Find appropriate docker container
 container_ids=$(docker ps --format '{{.Names}}' | grep -E 'mysql|db|mariadb')
 if [ -z "$container_ids" ]; then
@@ -94,7 +113,6 @@ for i in "${!MYSQL_USERS[@]}"; do
     MYSQL_USER="${MYSQL_USERS[$i]}"
     MYSQL_PASSWORD="${MYSQL_PASSWORDS[$i]}"
 done
-
 
 selected_container=""
 while true; do
@@ -198,11 +216,10 @@ while true; do
     fi
 done
 
-
 echo "Importing $latest_sql_file to $selected_database"
 
 # Import the SQL file to the selected database
-docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MYSQL_USER" "$selected_database" <"$latest_sql_file"
+docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MYSQL_USER" "$selected_database" < "$latest_sql_file"
 
 # Verify import and show success message
 echo "Import successful! $latest_sql_file has been imported into $selected_database in the container $selected_container using user $MYSQL_USER."

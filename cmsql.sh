@@ -12,10 +12,16 @@
 # 'cmsql' to import the latest .sql file in the current directory
 
 MYSQL_USERS=("root")
-MYSQL_PASSWORDS=("123")
+DEFAULT_PASSWORD="123"
+
+# Get the directory where the script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PW_CACHE_FILE="$SCRIPT_DIR/pw-cache.txt"
 
 # Type 'cmsql -r' to remote dump before importing
 # Type 'cmsql -p <password>' to specify a custom password
+# Type 'cmsql -c' to clear the password cache
+# Passwords are cached in pw-cache.txt in the script's directory for future use
 # Highly recommend to set up a dedicated read only user for this
 
 # REQUIRES mysqldump
@@ -37,15 +43,47 @@ REMOTE_DATABASE=$cmsql_REMOTE_DB
 
 skip_user_confirmation=0
 custom_password=""
+clear_cache=0
+
+# Function to get password from cache
+get_cached_password() {
+    local container=$1
+    if [ -f "$PW_CACHE_FILE" ]; then
+        grep "^$container:" "$PW_CACHE_FILE" | cut -d':' -f2
+    fi
+}
+
+# Function to save password to cache
+save_password_to_cache() {
+    local container=$1
+    local password=$2
+    if [ -f "$PW_CACHE_FILE" ]; then
+        sed -i.bak "/^$container:/d" "$PW_CACHE_FILE"
+    fi
+    echo "$container:$password" >> "$PW_CACHE_FILE"
+}
+
+# Function to clear password cache
+clear_password_cache() {
+    if [ -f "$PW_CACHE_FILE" ]; then
+        rm "$PW_CACHE_FILE"
+        echo "Password cache cleared."
+    else
+        echo "No password cache file found."
+    fi
+}
 
 # Parse command line arguments
-while getopts "rp:clean" opt; do
+while getopts "rp:cclean" opt; do
   case $opt in
     r)
       skip_user_confirmation=1
       ;;
     p)
       custom_password="$OPTARG"
+      ;;
+    c)
+      clear_cache=1
       ;;
     clean)
       echo "Listing all .sql files found:"
@@ -72,8 +110,9 @@ while getopts "rp:clean" opt; do
   esac
 done
 
-if [ -n "$custom_password" ]; then
-  MYSQL_PASSWORDS=("$custom_password")
+if [ $clear_cache -eq 1 ]; then
+    clear_password_cache
+    exit 0
 fi
 
 if [ $skip_user_confirmation -eq 1 ]; then
@@ -109,11 +148,6 @@ echo "Containers:"
 echo "$container_ids"
 echo
 
-for i in "${!MYSQL_USERS[@]}"; do
-    MYSQL_USER="${MYSQL_USERS[$i]}"
-    MYSQL_PASSWORD="${MYSQL_PASSWORDS[$i]}"
-done
-
 selected_container=""
 while true; do
     if [ "$(echo "$container_ids" | wc -l)" -eq 1 ]; then
@@ -133,6 +167,41 @@ while true; do
         echo "Invalid selection. Please try again."
     fi
 done
+
+# Check for cached password
+cached_password=$(get_cached_password "$selected_container")
+if [ -n "$cached_password" ] && [ -z "$custom_password" ]; then
+    MYSQL_PASSWORD="$cached_password"
+    echo "Using cached password for $selected_container"
+elif [ -n "$custom_password" ]; then
+    MYSQL_PASSWORD="$custom_password"
+    save_password_to_cache "$selected_container" "$custom_password"
+    echo "Password saved to cache for $selected_container"
+else
+    echo "No cached password found for $selected_container."
+    echo "Please enter the password for $selected_container (or press Enter to use default):"
+    read -s input_password
+    if [ -n "$input_password" ]; then
+        MYSQL_PASSWORD="$input_password"
+        save_password_to_cache "$selected_container" "$input_password"
+        echo "Password saved to cache for $selected_container"
+    else
+        MYSQL_PASSWORD="$DEFAULT_PASSWORD"
+        echo "Using default password"
+    fi
+fi
+
+MYSQL_USER="${MYSQL_USERS[0]}"
+
+# Test the connection
+if ! docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MYSQL_USER" -e "SELECT 1" >/dev/null 2>&1; then
+    echo "Connection failed. The password might be incorrect."
+    echo "Please enter the correct password for $selected_container:"
+    read -s correct_password
+    MYSQL_PASSWORD="$correct_password"
+    save_password_to_cache "$selected_container" "$correct_password"
+    echo "Password updated and saved to cache for $selected_container"
+fi
 
 # Search for all MySQL databases in the selected container
 databases=$(docker exec -i -e MYSQL_PWD="$MYSQL_PASSWORD" "$selected_container" mysql -u"$MYSQL_USER" --skip-column-names -e 'SHOW DATABASES;' | grep -v -E 'Database|information_schema|mysql|performance_schema|sys')
